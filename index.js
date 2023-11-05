@@ -57,6 +57,25 @@ async function run() {
       );
       res.send(result);
     });
+
+    // Cancel or change status to available
+    app.put("/booked/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateStatus = {
+        $set: {
+          status: "Available",
+        },
+      };
+      const result = await roomCollection.updateOne(
+        filter,
+        updateStatus,
+        options
+      );
+      res.send(result);
+    });
+
     // Sort the rooms via price
     app.get("/room/:sort", async (req, res) => {
       const sort = req.params.sort;
