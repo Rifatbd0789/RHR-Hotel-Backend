@@ -27,10 +27,20 @@ async function run() {
     await client.connect();
 
     const roomCollection = client.db("Hoteldb").collection("Rooms");
-
+    // Load all available Rooms
     app.get("/room", async (req, res) => {
       const query = { status: "Available" };
       const result = await roomCollection.find(query).toArray();
+      res.send(result);
+    });
+    // Sort the rooms via price
+    app.get("/room/:sort", async (req, res) => {
+      const sort = req.params.sort;
+      const query = { status: "Available" };
+      const result = await roomCollection
+        .find(query)
+        .sort(sort === "asc" ? { price: 1 } : { price: -1 })
+        .toArray();
       res.send(result);
     });
     // Send a ping to confirm a successful connection
