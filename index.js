@@ -25,6 +25,14 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const roomCollection = client.db("Hoteldb").collection("Rooms");
+
+    app.get("/room", async (req, res) => {
+      const query = { status: "Available" };
+      const result = await roomCollection.find(query).toArray();
+      res.send(result);
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
