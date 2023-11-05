@@ -26,7 +26,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const roomCollection = client.db("Hoteldb").collection("Rooms");
+    const roomCollection = client.db("RHRDB").collection("Room");
     // Load all available Rooms
     app.get("/room", async (req, res) => {
       const query = { status: "Available" };
@@ -39,7 +39,7 @@ async function run() {
       const query = { status: "Available" };
       const result = await roomCollection
         .find(query)
-        .sort(sort === "asc" ? { price: 1 } : { price: -1 })
+        .sort((sort === "asc" && { price: 1 }) || { price: -1 })
         .toArray();
       res.send(result);
     });
@@ -48,6 +48,25 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await roomCollection.findOne(query);
+      res.send(result);
+    });
+    // change status to booked
+    app.patch("/room/:id", async (req, res) => {
+      const id = req.params.id;
+      const date = req.body.date;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateStatus = {
+        $set: {
+          status: "Booked",
+          date: date,
+        },
+      };
+      const result = await roomCollection.updateOne(
+        filter,
+        updateStatus,
+        options
+      );
       res.send(result);
     });
 
