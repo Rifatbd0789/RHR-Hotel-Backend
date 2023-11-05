@@ -33,6 +33,30 @@ async function run() {
       const result = await roomCollection.find(query).toArray();
       res.send(result);
     });
+    // Load all booked Rooms
+    app.get("/booked", async (req, res) => {
+      const query = { status: "Booked" };
+      const result = await roomCollection.find(query).toArray();
+      res.send(result);
+    });
+    // Update the check in date
+    app.patch("/booked/:id", async (req, res) => {
+      const id = req.params.id;
+      const date = req.body.date;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateDate = {
+        $set: {
+          date: date,
+        },
+      };
+      const result = await roomCollection.updateOne(
+        filter,
+        updateDate,
+        options
+      );
+      res.send(result);
+    });
     // Sort the rooms via price
     app.get("/room/:sort", async (req, res) => {
       const sort = req.params.sort;
