@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
@@ -14,6 +15,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 
 // MongoDB:-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.dhwvmob.mongodb.net/?retryWrites=true&w=majority`;
@@ -26,13 +28,30 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+// middlewares to validate token
+const verifyToken = (req, res, next) => {
+  const token = req?.cookies?.token;
+  // if no token
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Unauthorized Access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const roomCollection = client.db("RHRDB").collection("Room");
+    const Collection = client.db("RHRDB");
+    const roomCollection = Collection.collection("Room");
+    const reviewCollection = Collection.collection("Reviews");
 
     // set cookie with jwt
     app.post("/jwt", async (req, res) => {
@@ -61,13 +80,13 @@ async function run() {
       res.send(result);
     });
     // Load all booked Rooms
-    app.get("/booked", async (req, res) => {
+    app.get("/booked", verifyToken, async (req, res) => {
       const query = { status: "Booked" };
       const result = await roomCollection.find(query).toArray();
       res.send(result);
     });
     // Update the check in date
-    app.patch("/booked/:id", async (req, res) => {
+    app.patch("/booked/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const date = req.body.date;
       const filter = { _id: new ObjectId(id) };
@@ -86,7 +105,7 @@ async function run() {
     });
 
     // Cancel or change status to available
-    app.put("/booked/:id", async (req, res) => {
+    app.put("/booked/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -121,7 +140,7 @@ async function run() {
       res.send(result);
     });
     // change status to booked
-    app.patch("/room/:id", async (req, res) => {
+    app.patch("/room/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const date = req.body.date;
       const filter = { _id: new ObjectId(id) };
@@ -137,6 +156,16 @@ async function run() {
         updateStatus,
         options
       );
+      res.send(result);
+    });
+    // store the review
+    app.post("/review", async (req, res) => {
+      const num = req.body.num;
+      const rating = req.body.rating;
+      const comment = req.body.comment;
+      const created = new Date();
+      const review = { num, rating, comment, created };
+      const result = await reviewCollection.insertOne(review);
       res.send(result);
     });
 
