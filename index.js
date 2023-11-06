@@ -34,7 +34,7 @@ async function run() {
 
     const roomCollection = client.db("RHRDB").collection("Room");
 
-    // jwt auth related
+    // set cookie with jwt
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -49,6 +49,11 @@ async function run() {
         .send({ success: true });
     });
 
+    // remove cookie
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
     // Load all available Rooms
     app.get("/room", async (req, res) => {
       const query = { status: "Available" };
