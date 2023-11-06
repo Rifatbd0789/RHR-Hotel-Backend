@@ -168,6 +168,14 @@ async function run() {
       const result = await reviewCollection.insertOne(review);
       res.send(result);
     });
+    // Load review
+    app.get("/review/:num", async (req, res) => {
+      const num = req.params.num;
+      console.log(typeof num);
+      const query = { num: parseInt(num) };
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
