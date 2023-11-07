@@ -33,7 +33,7 @@ const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token;
   // if no token
   if (!token) {
-    return res.status(401).send({ message: "Unauthorized Access" });
+    return res.status(401).send({ message: "Unauthorized Access token" });
   }
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
@@ -52,6 +52,7 @@ async function run() {
     const Collection = client.db("RHRDB");
     const roomCollection = Collection.collection("Room");
     const reviewCollection = Collection.collection("Reviews");
+    const bookedCollection = Collection.collection("Booked");
 
     // set cookie with jwt
     app.post("/jwt", async (req, res) => {
@@ -75,14 +76,15 @@ async function run() {
     });
     // Load all available Rooms
     app.get("/room", async (req, res) => {
-      const query = { status: "Available" };
+      const query = { seats: { $gt: 0 } };
       const result = await roomCollection.find(query).toArray();
       res.send(result);
     });
     // Load all booked Rooms
     app.get("/booked", verifyToken, async (req, res) => {
-      const query = { status: "Booked" };
-      const result = await roomCollection.find(query).toArray();
+      const email = req.user.email;
+      const query = { user: email };
+      const result = await bookedCollection.find(query).toArray();
       res.send(result);
     });
     // Update the check in date
@@ -96,7 +98,7 @@ async function run() {
           date: date,
         },
       };
-      const result = await roomCollection.updateOne(
+      const result = await bookedCollection.updateOne(
         filter,
         updateDate,
         options
@@ -104,28 +106,34 @@ async function run() {
       res.send(result);
     });
 
-    // Cancel or change status to available
-    app.put("/booked/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const options = { upsert: true };
+    // Cancel booked
+    app.put("/booked/:num", verifyToken, async (req, res) => {
+      // const id = req.params.id;
+      const num = req.params.num;
+      const seat = req.body.seats;
+      const id = req.body.id;
+      console.log(num);
+      const query = { _id: new ObjectId(id) };
+      const filter = { num: parseInt(num) };
+      // const options = { upsert: true };
       const updateStatus = {
-        $set: {
-          status: "Available",
+        $inc: {
+          seats: +seat,
         },
       };
       const result = await roomCollection.updateOne(
         filter,
-        updateStatus,
-        options
+        updateStatus
+        // options
       );
+      const result2 = await bookedCollection.deleteOne(query);
       res.send(result);
     });
 
     // Sort the rooms via price
     app.get("/room/:sort", async (req, res) => {
       const sort = req.params.sort;
-      const query = { status: "Available" };
+      const query = { seats: { $gt: 0 } };
       const result = await roomCollection
         .find(query)
         .sort((sort === "asc" && { price: 1 }) || { price: -1 })
@@ -140,22 +148,52 @@ async function run() {
       res.send(result);
     });
     // change status to booked
-    app.patch("/room/:id", verifyToken, async (req, res) => {
+    // app.patch("/room/:id", verifyToken, async (req, res) => {
+    //   const id = req.params.id;
+
+    //   const filter = { _id: new ObjectId(id) };
+
+    //   const updateStatus = {
+    //     $set: {
+    //       status: "Booked",
+    //       date: date,
+    //       user: user,
+    //     },
+    //   };
+    //   const result = await roomCollection.updateOne(
+    //     filter,
+    //     updateStatus,
+    //     options
+    //   );
+    //   res.send(result);
+    // });
+    // Decrement the seats and store the my booking
+    app.put("/room/seat/:id", async (req, res) => {
       const id = req.params.id;
       const date = req.body.date;
-      const filter = { _id: new ObjectId(id) };
+      const user = req.body.email;
+      const short_description = req.body.short_description;
+      const image = req.body.image;
+      const num = req.body.num;
+      const seat = parseInt(req.body.seat);
       const options = { upsert: true };
-      const updateStatus = {
-        $set: {
-          status: "Booked",
-          date: date,
+      const filter = { _id: new ObjectId(id) };
+      const Doc = {
+        date: date,
+        user: user,
+        short_description: short_description,
+        image: image,
+        seat: seat,
+        num: num,
+      };
+
+      const update = {
+        $inc: {
+          seats: -seat,
         },
       };
-      const result = await roomCollection.updateOne(
-        filter,
-        updateStatus,
-        options
-      );
+      const result = await roomCollection.updateOne(filter, update, options);
+      const result2 = await bookedCollection.insertOne(Doc);
       res.send(result);
     });
     // store the review
@@ -171,7 +209,6 @@ async function run() {
     // Load review
     app.get("/review/:num", async (req, res) => {
       const num = req.params.num;
-      console.log(typeof num);
       const query = { num: parseInt(num) };
       const result = await reviewCollection.find(query).toArray();
       res.send(result);
