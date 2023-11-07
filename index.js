@@ -68,7 +68,6 @@ async function run() {
         })
         .send({ success: true });
     });
-
     // remove cookie
     app.post("/logout", async (req, res) => {
       const user = req.body;
@@ -168,7 +167,7 @@ async function run() {
     //   res.send(result);
     // });
     // Decrement the seats and store the my booking
-    app.put("/room/seat/:id", async (req, res) => {
+    app.put("/room/seat/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const date = req.body.date;
       const user = req.body.email;
@@ -197,16 +196,24 @@ async function run() {
       res.send(result);
     });
     // store the review
-    app.post("/review", async (req, res) => {
+    app.post("/review", verifyToken, async (req, res) => {
       const num = req.body.num;
       const rating = req.body.rating;
       const comment = req.body.comment;
+      const userName = req.body.userName;
       const created = new Date();
-      const review = { num, rating, comment, created };
+      const review = { num, rating, comment, created, userName };
+      const query = { num: parseInt(num) };
+      const update = {
+        $inc: {
+          review_count: +1,
+        },
+      };
       const result = await reviewCollection.insertOne(review);
+      const result2 = await roomCollection.updateOne(query, update);
       res.send(result);
     });
-    // Load review
+    // Load review to UI
     app.get("/review/:num", async (req, res) => {
       const num = req.params.num;
       const query = { num: parseInt(num) };
