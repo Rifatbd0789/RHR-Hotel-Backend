@@ -10,7 +10,11 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://rhr-hotel-ade49.web.app",
+      "https://rhr-hotel-ade49.firebaseapp.com",
+    ],
     credentials: true,
   })
 );
@@ -47,7 +51,7 @@ const verifyToken = (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const Collection = client.db("RHRDB");
     const roomCollection = Collection.collection("Room");
@@ -71,7 +75,10 @@ async function run() {
     // remove cookie
     app.post("/logout", async (req, res) => {
       const user = req.body;
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+      console.log("logged out", user);
+      res
+        .clearCookie("token", { maxAge: 0, sameSite: "none", secure: true })
+        .send({ success: true });
     });
     // Load all available Rooms
     app.get("/room", async (req, res) => {
@@ -111,7 +118,6 @@ async function run() {
       const num = req.params.num;
       const seat = req.body.seats;
       const id = req.body.id;
-      console.log(num);
       const query = { _id: new ObjectId(id) };
       const filter = { num: parseInt(num) };
       // const options = { upsert: true };
@@ -146,26 +152,7 @@ async function run() {
       const result = await roomCollection.findOne(query);
       res.send(result);
     });
-    // change status to booked
-    // app.patch("/room/:id", verifyToken, async (req, res) => {
-    //   const id = req.params.id;
 
-    //   const filter = { _id: new ObjectId(id) };
-
-    //   const updateStatus = {
-    //     $set: {
-    //       status: "Booked",
-    //       date: date,
-    //       user: user,
-    //     },
-    //   };
-    //   const result = await roomCollection.updateOne(
-    //     filter,
-    //     updateStatus,
-    //     options
-    //   );
-    //   res.send(result);
-    // });
     // Decrement the seats and store the my booking
     app.put("/room/seat/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
@@ -222,7 +209,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
