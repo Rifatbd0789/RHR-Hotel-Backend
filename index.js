@@ -14,6 +14,7 @@ app.use(
       "http://localhost:5173",
       "https://rhr-hotel-ade49.web.app",
       "https://rhr-hotel-ade49.firebaseapp.com",
+      "https://rhr-hote-2.surge.sh",
     ],
     credentials: true,
   })
